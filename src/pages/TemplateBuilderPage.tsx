@@ -5,13 +5,10 @@ import {
   ArrowLeft,
   RefreshCw,
   Eye,
-  CheckCircle,
   Layers,
   Database,
   Code2,
-  FileCode2,
   AlertCircle,
-  ChevronRight,
 } from 'lucide-react';
 import { templatesApi } from '../api/templatesApi';
 import type { FieldMappingDto } from '../types/api';
@@ -26,41 +23,25 @@ import { PageSpinner } from '../components/ui/Spinner';
 type LeftTab = 'catalogue' | 'xml';
 type RightTab = 'mappings' | 'preview';
 
-function StepIndicator({ currentStep }: { currentStep: number }) {
-  const steps = [
-    { label: 'Select Field', desc: 'From catalogue or XML' },
-    { label: 'Save Mapping', desc: 'Configure and save' },
-    { label: 'Preview Output', desc: 'Validate extraction' },
-  ];
+function WorkflowBar({ step }: { step: number }) {
+  const labels = ['Select Field', 'Configure Mapping', 'Preview'];
   return (
-    <div className="flex items-center gap-1">
-      {steps.map((step, i) => (
+    <div className="flex items-center gap-0.5">
+      {labels.map((label, i) => (
         <span key={i} className="flex items-center">
-          <span className="flex items-center gap-2">
-            <span
-              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 transition-colors ${
-                i < currentStep
-                  ? 'bg-green-500 text-white'
-                  : i === currentStep
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-200 text-slate-500'
-              }`}
-            >
-              {i < currentStep ? <CheckCircle size={10} /> : i + 1}
-            </span>
-            <span className="hidden lg:block">
-              <span
-                className={`text-[10px] font-semibold leading-none block ${
-                  i === currentStep ? 'text-blue-700' : i < currentStep ? 'text-green-700' : 'text-slate-400'
-                }`}
-              >
-                {step.label}
-              </span>
-              <span className="text-[9px] text-slate-400 mt-0.5 block">{step.desc}</span>
-            </span>
+          <span
+            className={`text-[11px] font-medium px-2 py-0.5 rounded transition-colors ${
+              i < step
+                ? 'text-emerald-700 bg-emerald-50'
+                : i === step
+                ? 'text-blue-700 bg-blue-50'
+                : 'text-slate-400'
+            }`}
+          >
+            {i + 1}. {label}
           </span>
-          {i < steps.length - 1 && (
-            <ChevronRight size={12} className="text-slate-300 mx-1 shrink-0" />
+          {i < labels.length - 1 && (
+            <span className="text-slate-300 mx-0.5 text-[10px]">→</span>
           )}
         </span>
       ))}
@@ -155,11 +136,11 @@ export function TemplateBuilderPage({ onToast }: TemplateBuilderPageProps) {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="card p-8 text-center max-w-md">
-          <AlertCircle size={32} className="text-red-400 mx-auto mb-4" />
-          <h3 className="font-semibold text-slate-900 mb-1">Failed to load template</h3>
-          <p className="text-sm text-slate-500 mb-4">{(templateErr as Error)?.message}</p>
+          <AlertCircle size={24} className="text-red-400 mx-auto mb-3" />
+          <h3 className="font-semibold text-slate-800 text-[14px] mb-1">Failed to load template</h3>
+          <p className="text-[13px] text-slate-500 mb-4">{(templateErr as Error)?.message}</p>
           <button onClick={() => navigate('/templates')} className="btn-secondary">
-            <ArrowLeft size={14} /> Back to Templates
+            <ArrowLeft size={13} /> Back to Templates
           </button>
         </div>
       </div>
@@ -171,26 +152,23 @@ export function TemplateBuilderPage({ onToast }: TemplateBuilderPageProps) {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* ── Top header bar ─────────────────────────── */}
-      <header className="shrink-0 bg-white border-b border-slate-200 px-6 py-3 z-20">
-        <div className="flex items-center gap-4">
-          {/* Back + name */}
+      <header className="shrink-0 bg-white border-b border-slate-200 px-5 py-2.5 z-20">
+        <div className="flex items-center gap-3">
+          {/* Back */}
           <button
             onClick={() => navigate('/templates')}
-            className="btn-ghost text-xs shrink-0"
+            className="btn-ghost text-[12px] shrink-0"
           >
-            <ArrowLeft size={14} />
-            Templates
+            <ArrowLeft size={13} />
           </button>
 
-          <div className="h-5 w-px bg-slate-200 shrink-0" />
+          <div className="h-4 w-px bg-slate-200 shrink-0" />
 
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shrink-0">
-              <FileCode2 size={15} className="text-white" />
-            </div>
+          {/* Template info */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h1 className="text-sm font-bold text-slate-900 truncate">{template?.name}</h1>
+                <h1 className="text-[14px] font-semibold text-slate-900 truncate">{template?.name}</h1>
                 <SourceTypeBadge sourceType={sourceType} />
                 {template?.version !== undefined && (
                   <StatusBadge variant="version" label={`v${template.version}`} />
@@ -200,32 +178,31 @@ export function TemplateBuilderPage({ onToast }: TemplateBuilderPageProps) {
                 )}
               </div>
               {template?.description && (
-                <p className="text-[11px] text-slate-500 truncate">{template.description}</p>
+                <p className="text-[11px] text-slate-400 truncate">{template.description}</p>
               )}
             </div>
           </div>
 
-          {/* Step indicator */}
+          {/* Workflow bar */}
           <div className="shrink-0 hidden xl:block">
-            <StepIndicator currentStep={currentStep} />
+            <WorkflowBar step={currentStep} />
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => refetchFields()}
               disabled={fieldsFetching}
-              className="btn-ghost text-xs"
+              className="btn-ghost text-[12px]"
               title="Refresh mappings"
             >
-              <RefreshCw size={13} className={fieldsFetching ? 'animate-spin' : ''} />
-              Refresh
+              <RefreshCw size={12} className={fieldsFetching ? 'animate-spin' : ''} />
             </button>
             <button
               onClick={() => setRightTab('preview')}
-              className={`btn-primary text-xs ${rightTab === 'preview' ? 'bg-teal-600 hover:bg-teal-700' : ''}`}
+              className={`btn-primary text-[12px] ${rightTab === 'preview' ? 'bg-teal-600 hover:bg-teal-700' : ''}`}
             >
-              <Eye size={13} />
+              <Eye size={12} />
               Preview
             </button>
           </div>
@@ -235,29 +212,29 @@ export function TemplateBuilderPage({ onToast }: TemplateBuilderPageProps) {
       {/* ── Main two-panel content ──────────────────── */}
       <div className="flex flex-1 overflow-hidden">
         {/* ── LEFT PANEL ─ Field Discovery ──────── */}
-        <div className="w-80 xl:w-96 shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-hidden">
+        <div className="w-80 xl:w-[360px] shrink-0 border-r border-slate-200 bg-white flex flex-col overflow-hidden">
           {/* Tab switcher */}
           <div className="flex border-b border-slate-200 shrink-0">
             <button
               onClick={() => setLeftTab('catalogue')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-colors border-b-2 ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[12px] font-medium transition-colors border-b-2 ${
                 leftTab === 'catalogue'
-                  ? 'border-blue-600 text-blue-700 bg-blue-50/50'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                  ? 'border-blue-600 text-blue-700'
+                  : 'border-transparent text-slate-400 hover:text-slate-600'
               }`}
             >
-              <Database size={13} />
+              <Database size={12} />
               Catalogue
             </button>
             <button
               onClick={() => setLeftTab('xml')}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold transition-colors border-b-2 ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-[12px] font-medium transition-colors border-b-2 ${
                 leftTab === 'xml'
-                  ? 'border-indigo-600 text-indigo-700 bg-indigo-50/50'
-                  : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+                  ? 'border-blue-600 text-blue-700'
+                  : 'border-transparent text-slate-400 hover:text-slate-600'
               }`}
             >
-              <Code2 size={13} />
+              <Code2 size={12} />
               XML Viewer
             </button>
           </div>
@@ -279,41 +256,34 @@ export function TemplateBuilderPage({ onToast }: TemplateBuilderPageProps) {
         {/* ── RIGHT PANEL ─ Mapping Workspace ───── */}
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Tab switcher */}
-          <div className="flex items-center border-b border-slate-200 bg-white px-4 shrink-0">
+          <div className="flex items-center border-b border-slate-200 bg-white px-3 shrink-0">
             <button
               onClick={() => setRightTab('mappings')}
-              className={`flex items-center gap-1.5 py-2.5 px-3 text-xs font-semibold transition-colors border-b-2 ${
+              className={`flex items-center gap-1.5 py-2 px-2.5 text-[12px] font-medium transition-colors border-b-2 ${
                 rightTab === 'mappings'
                   ? 'border-blue-600 text-blue-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
+                  : 'border-transparent text-slate-400 hover:text-slate-600'
               }`}
             >
-              <Layers size={13} />
+              <Layers size={12} />
               Field Mappings
               {fields && (
-                <span className="ml-1 bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded-full font-bold">
-                  {fields.length}
+                <span className="ml-0.5 text-[10px] text-slate-400 font-normal">
+                  ({fields.length})
                 </span>
               )}
             </button>
             <button
               onClick={() => setRightTab('preview')}
-              className={`flex items-center gap-1.5 py-2.5 px-3 text-xs font-semibold transition-colors border-b-2 ${
+              className={`flex items-center gap-1.5 py-2 px-2.5 text-[12px] font-medium transition-colors border-b-2 ${
                 rightTab === 'preview'
                   ? 'border-teal-600 text-teal-700'
-                  : 'border-transparent text-slate-500 hover:text-slate-700'
+                  : 'border-transparent text-slate-400 hover:text-slate-600'
               }`}
             >
-              <Eye size={13} />
-              Preview Output
+              <Eye size={12} />
+              Preview
             </button>
-
-            {/* Microcopy hint */}
-            <p className="ml-auto text-[10px] text-slate-400 hidden lg:block">
-              {leftTab === 'catalogue'
-                ? 'Known fields are reusable mappings discovered from existing templates'
-                : 'Preview validates extraction before production execution'}
-            </p>
           </div>
 
           {/* Right panel content */}
@@ -341,6 +311,7 @@ export function TemplateBuilderPage({ onToast }: TemplateBuilderPageProps) {
         templateId={id}
         editField={editField}
         draft={draft}
+        existingFields={fields ?? []}
         onClose={() => {
           setDrawerOpen(false);
           setEditField(null);

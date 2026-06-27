@@ -21,7 +21,6 @@ const schema = z.object({
   csvHeader: z.string().min(1, 'CSV Header is required'),
   extractionKey: z.string().min(1, 'Extraction Key is required'),
   xpathExpr: z.string().min(1, 'XPath Expression is required'),
-  columnOrder: z.number({ message: 'Must be a number' }),
   transformFn: z.string().min(1),
   dataType: z.string().min(1),
   transformParams: z
@@ -48,6 +47,7 @@ interface MappingEditorDrawerProps {
   templateId: number;
   editField?: FieldMappingDto | null;
   draft?: Partial<FieldMappingDto> | null;
+  existingFields?: FieldMappingDto[];
   onClose: () => void;
   onSaved: (action: 'created' | 'updated', header: string) => void;
   onError: (msg: string) => void;
@@ -57,7 +57,6 @@ const defaultValues: FormValues = {
   csvHeader: '',
   extractionKey: '',
   xpathExpr: '',
-  columnOrder: 900,
   transformFn: 'PASSTHROUGH',
   dataType: 'STRING',
   transformParams: null,
@@ -82,11 +81,11 @@ function FormField({
     <div>
       <label className="label-base">
         {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
+        {required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
       {children}
-      {hint && !error && <p className="text-[10px] text-slate-400 mt-1">{hint}</p>}
-      {error && <p className="text-[10px] text-red-500 mt-1">{error}</p>}
+      {hint && !error && <p className="text-[10px] text-slate-400 mt-0.5">{hint}</p>}
+      {error && <p className="text-[10px] text-red-500 mt-0.5">{error}</p>}
     </div>
   );
 }
@@ -96,6 +95,7 @@ export function MappingEditorDrawer({
   templateId,
   editField,
   draft,
+  existingFields = [],
   onClose,
   onSaved,
   onError,
@@ -123,7 +123,6 @@ export function MappingEditorDrawer({
         csvHeader: editField.csvHeader,
         extractionKey: editField.extractionKey,
         xpathExpr: editField.xpathExpr,
-        columnOrder: editField.columnOrder,
         transformFn: editField.transformFn || 'PASSTHROUGH',
         dataType: editField.dataType || 'STRING',
         transformParams: editField.transformParams ?? null,
@@ -147,10 +146,19 @@ export function MappingEditorDrawer({
     }
   }, [open, editField, draft, reset]);
 
+  // Auto-calculate column order
+  const getColumnOrder = (): number => {
+    if (isEdit && editField) return editField.columnOrder;
+    if (existingFields.length === 0) return 10;
+    const maxOrder = Math.max(...existingFields.map((f) => f.columnOrder));
+    return maxOrder + 10;
+  };
+
   const createMutation = useMutation({
     mutationFn: (data: FormValues) =>
       templatesApi.createField(templateId, {
         ...data,
+        columnOrder: getColumnOrder(),
         transformParams: data.transformParams || null,
       }),
     onSuccess: (_result, data) => {
@@ -165,6 +173,7 @@ export function MappingEditorDrawer({
     mutationFn: (data: FormValues) =>
       templatesApi.updateField(templateId, editField!.id!, {
         ...data,
+        columnOrder: getColumnOrder(),
         transformParams: data.transformParams || null,
       }),
     onSuccess: (_result, data) => {
@@ -190,46 +199,37 @@ export function MappingEditorDrawer({
       <div className="drawer-overlay" onClick={onClose} />
 
       {/* Panel */}
-      <div className="drawer-panel w-[480px]">
+      <div className="drawer-panel w-[440px]">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-              <Wand2 size={15} className="text-blue-600" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-slate-900">
-                {isEdit ? 'Edit Field Mapping' : 'New Field Mapping'}
-              </h2>
-              <p className="text-xs text-slate-500">
-                {isEdit ? `Updating "${editField?.csvHeader}"` : 'Configure CSV field extraction'}
-              </p>
-            </div>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200 shrink-0">
+          <div>
+            <h2 className="text-[14px] font-semibold text-slate-900">
+              {isEdit ? 'Edit Mapping' : 'New Mapping'}
+            </h2>
+            <p className="text-[11px] text-slate-400">
+              {isEdit ? `Updating "${editField?.csvHeader}"` : 'Configure field extraction'}
+            </p>
           </div>
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+            className="w-7 h-7 rounded flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
           >
-            <X size={16} />
+            <X size={14} />
           </button>
         </div>
 
         {/* Form */}
         <form id="mapping-form" onSubmit={handleSubmit(onSubmit)} className="flex-1 overflow-y-auto">
-          <div className="px-6 py-5 space-y-4">
+          <div className="px-5 py-4 space-y-3.5">
             {/* Draft badge */}
             {draft && !isEdit && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-50 border border-blue-200">
-                <Wand2 size={12} className="text-blue-600 shrink-0" />
-                <p className="text-xs text-blue-700">
-                  Form pre-filled from selected field. Review and save.
+              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded border border-blue-200 bg-blue-50/60">
+                <Wand2 size={11} className="text-blue-600 shrink-0" />
+                <p className="text-[11px] text-blue-700">
+                  Pre-filled from selected field. Review and save.
                 </p>
               </div>
             )}
-
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-2">
-              Basic Configuration
-            </p>
 
             <FormField label="CSV Header" required error={errors.csvHeader?.message}>
               <input
@@ -253,54 +253,43 @@ export function MappingEditorDrawer({
               <textarea
                 {...register('xpathExpr')}
                 rows={2}
-                className={`input-base font-mono text-xs resize-none ${errors.xpathExpr ? 'input-error' : ''}`}
+                className={`input-base font-mono text-[11px] resize-none ${errors.xpathExpr ? 'input-error' : ''}`}
                 placeholder="/BCTrade/trade/tradeHeader/tradeId/id/text()"
               />
             </FormField>
 
-            <div className="grid grid-cols-2 gap-3">
-              <FormField label="Column Order" required error={errors.columnOrder?.message}>
-                <input
-                  {...register('columnOrder', { valueAsNumber: true })}
-                  type="number"
-                  className={`input-base ${errors.columnOrder ? 'input-error' : ''}`}
-                  placeholder="900"
-                />
-              </FormField>
-
-              <FormField label="Transform Function" required error={errors.transformFn?.message}>
-                <select {...register('transformFn')} className="input-base text-sm">
-                  {TRANSFORM_FUNCTIONS.map((fn) => (
-                    <option key={fn} value={fn}>
-                      {fn}
-                    </option>
-                  ))}
-                </select>
-              </FormField>
-            </div>
+            <FormField label="Transform Function" required error={errors.transformFn?.message}>
+              <select {...register('transformFn')} className="input-base">
+                {TRANSFORM_FUNCTIONS.map((fn) => (
+                  <option key={fn} value={fn}>
+                    {fn}
+                  </option>
+                ))}
+              </select>
+            </FormField>
 
             {/* Advanced section */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
               <button
                 type="button"
                 onClick={() => setShowAdvanced((s) => !s)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
+                className="w-full flex items-center justify-between px-3 py-2 bg-slate-50/80 hover:bg-slate-100 transition-colors text-left"
               >
-                <span className="text-xs font-semibold text-slate-600 flex items-center gap-2">
-                  <Info size={12} />
+                <span className="text-[11px] font-medium text-slate-600 flex items-center gap-1.5">
+                  <Info size={11} />
                   Advanced Settings
                 </span>
                 {showAdvanced ? (
-                  <ChevronUp size={14} className="text-slate-400" />
+                  <ChevronUp size={12} className="text-slate-400" />
                 ) : (
-                  <ChevronDown size={14} className="text-slate-400" />
+                  <ChevronDown size={12} className="text-slate-400" />
                 )}
               </button>
 
               {showAdvanced && (
-                <div className="px-4 py-4 space-y-4 border-t border-slate-200 animate-slide-in-up">
+                <div className="px-3 py-3 space-y-3 border-t border-slate-200 animate-slide-in-up">
                   <FormField label="Data Type" error={errors.dataType?.message}>
-                    <select {...register('dataType')} className="input-base text-sm">
+                    <select {...register('dataType')} className="input-base">
                       {DATA_TYPES.map((dt) => (
                         <option key={dt} value={dt}>
                           {dt}
@@ -317,12 +306,12 @@ export function MappingEditorDrawer({
                     <textarea
                       {...register('transformParams')}
                       rows={2}
-                      className={`input-base font-mono text-xs resize-none ${errors.transformParams ? 'input-error' : ''}`}
+                      className={`input-base font-mono text-[11px] resize-none ${errors.transformParams ? 'input-error' : ''}`}
                       placeholder='{"key": "value"}'
                     />
                   </FormField>
 
-                  <FormField label="Null Default" hint="Value to use when field is empty">
+                  <FormField label="Null Default" hint="Value when field is empty">
                     <input
                       {...register('nullDefault')}
                       className="input-base"
@@ -330,11 +319,11 @@ export function MappingEditorDrawer({
                     />
                   </FormField>
 
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-amber-50 border border-amber-200">
+                  <div className="flex items-center justify-between p-2.5 rounded bg-amber-50/60 border border-amber-200">
                     <div>
-                      <p className="text-xs font-semibold text-amber-900">Internal Mapping</p>
+                      <p className="text-[12px] font-medium text-amber-900">Internal</p>
                       <p className="text-[10px] text-amber-700 mt-0.5">
-                        Internal fields are not included in CSV output
+                        Not included in CSV output
                       </p>
                     </div>
                     <Controller
@@ -364,24 +353,24 @@ export function MappingEditorDrawer({
         </form>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50 shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-t border-slate-200 bg-slate-50/50 shrink-0">
           <button
             type="button"
             onClick={() => reset(defaultValues)}
-            className="btn-ghost text-xs"
+            className="btn-ghost text-[12px]"
           >
-            <RotateCcw size={13} />
-            Reset Draft
+            <RotateCcw size={12} />
+            Reset
           </button>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={onClose} className="btn-secondary text-xs">
+            <button type="button" onClick={onClose} className="btn-secondary text-[12px]">
               Cancel
             </button>
             <button
               type="submit"
               form="mapping-form"
               disabled={isPending}
-              className="btn-primary text-xs"
+              className="btn-primary text-[12px]"
             >
               {isPending ? (
                 <>
@@ -390,8 +379,8 @@ export function MappingEditorDrawer({
                 </>
               ) : (
                 <>
-                  <Save size={13} />
-                  {isEdit ? 'Update Mapping' : 'Save Mapping'}
+                  <Save size={12} />
+                  {isEdit ? 'Update' : 'Save'}
                 </>
               )}
             </button>
